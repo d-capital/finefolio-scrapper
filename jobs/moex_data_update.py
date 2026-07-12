@@ -114,7 +114,7 @@ def find_eps_ttm(elements: list[WebElement], suffix_set='billion') -> float:
 def get_submitted_files():
     options = Options()
     options.add_argument("--headless=new")
-    moex_data = pd.read_csv("C:\\Users\\sdziu\\my_documents\\0_repositories\\finefolio\\finefolio-be\\moex_data.csv")
+    moex_data = pd.read_csv("moex_data.csv")
     moex_tickers = moex_data['Ticker'].to_list()
     driver = webdriver.Chrome(options=options)
     today = datetime.now()
