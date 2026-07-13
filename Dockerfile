@@ -1,15 +1,9 @@
 FROM python:3.9.13
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-# Install system dependencies for Chrome/Chromium
+# 1. Install system dependencies needed for Chrome
 RUN apt-get update && apt-get install -y \
     wget \
-    gnupg \
     ca-certificates \
     libglib2.0-0 \
     libnss3 \
@@ -21,12 +15,19 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Google Chrome stable using the correct official Google URLs
-RUN mkdir -p /etc/apt/keyrings \
-    && wget -q -O - https://google.com | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg \
-    && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://google.com stable main" > /etc/apt/sources.list.d/google-chrome.list \
+# 2. Directly download and install the official Chrome package
+RUN wget -q https://google.com \
     && apt-get update \
-    && apt-get install -y google-chrome-stable
+    && apt-get install -y ./google-chrome-stable_current_amd64.deb \
+    && rm google-chrome-stable_current_amd64.deb \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Python application setup (Cached unless requirements change)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 4. Copy code last (Speeds up future builds)
+COPY . .
 
 EXPOSE 3000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]
