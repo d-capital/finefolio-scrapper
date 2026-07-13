@@ -114,6 +114,8 @@ def find_eps_ttm(elements: list[WebElement], suffix_set='billion') -> float:
 def get_submitted_files():
     options = Options()
     options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")   # Required when running as root user
+    options.add_argument("--disable-dev-shm-usage")
     moex_data = pd.read_csv("moex_data.csv")
     moex_tickers = moex_data['Ticker'].to_list()
     driver = webdriver.Chrome(options=options)
@@ -142,7 +144,9 @@ def get_submitted_files():
 
 def get_net_income_for_years(symbol, target_years=("2025")):
     options = Options()
-    options.add_argument("--headless=new") 
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     driver = webdriver.Chrome(options=options)
     url = f"https://smart-lab.ru/q/{symbol}/f/y/"
     driver.get(url)

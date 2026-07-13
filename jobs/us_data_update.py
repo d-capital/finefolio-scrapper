@@ -20,7 +20,9 @@ def get_timestamp_a_week_ago():
 
 def get_tickers(timestamp:str):
     options = Options()
-    options.add_argument("--headless=new") 
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     driver = webdriver.Chrome(options=options)
     url = f"https://www.tradingview.com/earnings-calendar/?countries=us&timestamp={timestamp}"
     driver.get(url)
@@ -118,6 +120,8 @@ def get_net_income(exchange:str,tickers:list[str]):
     for ticker in tickers:
         options = Options()
         options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
         driver = webdriver.Chrome(options=options)
         url = f"https://tradingview.com/symbols/{exchange}-{ticker}/financials-income-statement/?selected=total_revenue%2Cgross_profit%2Coper_income%2Cpretax_income"
         driver.get(url)
