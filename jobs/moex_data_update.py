@@ -2,6 +2,7 @@ import requests
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -113,12 +114,17 @@ def find_eps_ttm(elements: list[WebElement], suffix_set='billion') -> float:
 
 def get_submitted_files():
     options = Options()
+    # Direct Selenium to the native Debian package locations
+    options.binary_location = "/usr/bin/chromium" 
     options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")   # Required when running as root user
+    options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    # Pass the native system driver path explicitly
+    service = Service(executable_path="/usr/bin/chromedriver")
+    driver = webdriver.Chrome(service=service, options=options)
     moex_data = pd.read_csv("moex_data.csv")
     moex_tickers = moex_data['Ticker'].to_list()
-    driver = webdriver.Chrome(options=options)
+
     today = datetime.now()
     seven_days_ago = today - timedelta(days=7)
     formatted_date = today.strftime("%d.%m.%Y")
@@ -144,10 +150,14 @@ def get_submitted_files():
 
 def get_net_income_for_years(symbol, target_years=("2025")):
     options = Options()
+    # Direct Selenium to the native Debian package locations
+    options.binary_location = "/usr/bin/chromium" 
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    driver = webdriver.Chrome(options=options)
+    # Pass the native system driver path explicitly
+    service = Service(executable_path="/usr/bin/chromedriver")
+    driver = webdriver.Chrome(service=service, options=options)
     url = f"https://smart-lab.ru/q/{symbol}/f/y/"
     driver.get(url)
     time.sleep(10)

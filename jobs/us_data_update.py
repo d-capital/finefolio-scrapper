@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -20,10 +21,14 @@ def get_timestamp_a_week_ago():
 
 def get_tickers(timestamp:str):
     options = Options()
+    # Direct Selenium to the native Debian package locations
+    options.binary_location = "/usr/bin/chromium" 
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    driver = webdriver.Chrome(options=options)
+    # Pass the native system driver path explicitly
+    service = Service(executable_path="/usr/bin/chromedriver")
+    driver = webdriver.Chrome(service=service, options=options)
     url = f"https://www.tradingview.com/earnings-calendar/?countries=us&timestamp={timestamp}"
     driver.get(url)
     time.sleep(10)
@@ -119,10 +124,14 @@ def text_to_number(txt, suffix_set='billion') -> float:
 def get_net_income(exchange:str,tickers:list[str]):
     for ticker in tickers:
         options = Options()
+        # Direct Selenium to the native Debian package locations
+        options.binary_location = "/usr/bin/chromium" 
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        driver = webdriver.Chrome(options=options)
+        # Pass the native system driver path explicitly
+        service = Service(executable_path="/usr/bin/chromedriver")
+        driver = webdriver.Chrome(service=service, options=options)
         url = f"https://tradingview.com/symbols/{exchange}-{ticker}/financials-income-statement/?selected=total_revenue%2Cgross_profit%2Coper_income%2Cpretax_income"
         driver.get(url)
         try:
