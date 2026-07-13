@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Google Chrome stable using the correct keyring method
+# Install Google Chrome stable using the correct official Google URLs
 RUN mkdir -p /etc/apt/keyrings \
     && wget -q -O - https://google.com | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg \
     && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://google.com stable main" > /etc/apt/sources.list.d/google-chrome.list \
