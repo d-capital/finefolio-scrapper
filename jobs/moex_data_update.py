@@ -1,5 +1,12 @@
-import requests
+import json
+import os
+import re
+import time
+from datetime import datetime, timedelta
 
+import pandas as pd
+import requests
+from kafka import KafkaProducer
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -7,13 +14,17 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import WebElement
-import re
-import time
-import pandas as pd
-import re
-from datetime import datetime, timedelta
 
-import re
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka-broker:9092").split(",")
+KAFKA_NET_INCOME_TOPIC = os.getenv("KAFKA_NET_INCOME_TOPIC", "finefolio.net-income")
+KAFKA_ASSET_FUNDAMENTALS_TOPIC = os.getenv("KAFKA_ASSET_FUNDAMENTALS_TOPIC", "finefolio.asset-fundamentals")
+
+
+def get_kafka_producer():
+    return KafkaProducer(
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_serializer=lambda value: json.dumps(value, default=str).encode("utf-8"),
+    )
 def clean_text(txt: str) -> str:
     """Remove invisible Unicode formatting chars and normalize minus/dashes."""
     if txt is None:
@@ -202,6 +213,8 @@ def get_net_income_for_years(symbol, target_years=("2025")):
 
 def run_update():
     stocks_to_update = get_submitted_files()
+    producer = get_kafka_producer()
+
     if len(stocks_to_update) > 0:
         print(stocks_to_update)
         file = pd.read_csv("moex_data.csv")
@@ -213,14 +226,22 @@ def run_update():
                 if financials[0] is not None:
                     net_income_2025 = int(financials[0])
                     net_income_payload = {
-                        'year': 2025,
-                        'value': net_income_2025
+                        "exchange": "MOEX",
+                        "ticker": ticker,
+                        "year": 2025,
+                        "value": net_income_2025,
                     }
-                    net_income_response = requests.post(f'http://finefolionet:8080/valuation/MOEX/{ticker}/net-income', json=net_income_payload,verify=False)
-                    if net_income_response.status_code == 200:
-                        print(f"Successfully updated net income for {ticker} for 2025")
-                    else:
-                        print(f"Failed to update net income for {ticker} for 2025")
+                    try:
+                        future = producer.send(
+                            KAFKA_NET_INCOME_TOPIC,
+                            key=f"MOEX.{ticker}".encode("utf-8"),
+                            value=net_income_payload,
+                        )
+                        future.get(timeout=10)
+                        print(f"Successfully sent net income to Kafka for {ticker} for 2025")
+                    except Exception as exc:
+                        print(f"Failed to send net income to Kafka for {ticker} for 2025: {exc}")
+
                 payload = {}
                 if financials[1] is not None:
                     eps = int(financials[1])
@@ -243,17 +264,31 @@ def run_update():
                 if financials[7] is not None:
                     net_debt = int(financials[7])
                     payload['netDebt'] = net_debt
+
                 if len(payload) == 0:
                     print(f"No financial data found for {ticker}. Skipping update.")
                 else:
-                    print(f"Updating financial data for {ticker} with payload: {payload}")
-                    response = requests.patch(f'http://finefolionet:8080/asset-fundamentals/MOEX/{ticker}', json=payload)
-                    if response.status_code == 200:
-                        print(f"Successfully updated {ticker}")
-                    else:
-                        print(f"Failed to update {ticker}")
+                    fundamentals_payload = {
+                        "exchange": "MOEX",
+                        "ticker": ticker,
+                        "data": payload,
+                    }
+                    print(f"Updating financial data for {ticker} with payload: {fundamentals_payload}")
+                    try:
+                        future = producer.send(
+                            KAFKA_ASSET_FUNDAMENTALS_TOPIC,
+                            key=f"MOEX.{ticker}".encode("utf-8"),
+                            value=fundamentals_payload,
+                        )
+                        future.get(timeout=10)
+                        print(f"Successfully sent fundamentals to Kafka for {ticker}")
+                    except Exception as exc:
+                        print(f"Failed to send fundamentals to Kafka for {ticker}: {exc}")
                 print("finished: " + ticker)
             else:
                 print("ticker not found in file: " + ticker)
     else:
         print("No stocks to update.")
+
+    producer.flush()
+    producer.close()

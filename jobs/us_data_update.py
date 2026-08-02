@@ -1,7 +1,11 @@
+import json
+import os
+import re
 import time
 from datetime import datetime, timedelta
 
 import requests
+from kafka import KafkaProducer
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -9,8 +13,17 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import WebElement
-import re
 import pandas as pd
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka-broker:9092").split(",")
+KAFKA_NET_INCOME_TOPIC = os.getenv("KAFKA_NET_INCOME_TOPIC", "finefolio.net-income")
+
+
+def get_kafka_producer():
+    return KafkaProducer(
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_serializer=lambda value: json.dumps(value, default=str).encode("utf-8"),
+    )
 
 def get_timestamp_a_week_ago():
     # Calculate the datetime 7 days ago
@@ -156,19 +169,34 @@ def get_net_income(exchange:str,tickers:list[str]):
 def run_update():
     timestamp = get_timestamp_a_week_ago()
     tickers = get_tickers(timestamp=timestamp)
-    #NYSE
-    for ticker in tickers:  
-        net_income_2025 = get_net_income(ticker["exchange"],[ticker["ticker"]])
+    producer = get_kafka_producer()
+
+    for ticker in tickers:
+        net_income_2025 = get_net_income(ticker["exchange"], [ticker["ticker"]])
         if net_income_2025 is not None:
             net_income_payload = {
-                                'year': 2025,
-                                'value': net_income_2025
-                            }
-            net_income_response = requests.post(f'http://finefolionet:8080/valuation/{ticker["exchange"]}/{ticker["ticker"]}/net-income', 
-                                                json=net_income_payload,
-                                                verify=False)
-            if net_income_response.status_code == 200:
-                print(f"Successfully updated net income for {ticker} for 2025")
-            else:
-                print(f"Failed to update net income for {ticker} for 2025")
+                "exchange": ticker["exchange"],
+                "ticker": ticker["ticker"],
+                "year": 2025,
+                "value": net_income_2025,
+            }
+            try:
+                future = producer.send(
+                    KAFKA_NET_INCOME_TOPIC,
+                    key=f"{ticker['exchange']}.{ticker['ticker']}".encode("utf-8"),
+                    value=net_income_payload,
+                )
+                record_metadata = future.get(timeout=10)
+                print(
+                    f"Successfully sent net income to Kafka topic {record_metadata.topic} "
+                    f"for {ticker['exchange']}:{ticker['ticker']} for 2025"
+                )
+            except Exception as exc:
+                print(
+                    f"Failed to send net income to Kafka for {ticker['exchange']}:{ticker['ticker']} "
+                    f"for 2025: {exc}"
+                )
+
+    producer.flush()
+    producer.close()
     
