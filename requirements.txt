@@ -5,3 +5,5 @@ pandas
 APScheduler
 requests
 selenium
+apimoex
+statsmodels
