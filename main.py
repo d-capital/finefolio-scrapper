@@ -31,11 +31,11 @@ scheduler.add_job(
 scheduler.add_job(
     moex_beta_update.run_update,
     'cron',
-    #day_of_week='sun',
-    hour=12,
+    day_of_week='sun',
+    hour=8,
     minute=00,
     timezone=moscow_tz,
-    id='weekly_7am_moscow_moex_beta')
+    id='weekly_8am_moscow_moex_beta')
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
