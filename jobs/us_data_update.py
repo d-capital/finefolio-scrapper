@@ -12,6 +12,9 @@ from selenium.webdriver.support.select import WebElement
 import re
 import pandas as pd
 
+interest_expense_url = "https://www.tradingview.com/symbols/NASDAQ-TSLA/financials-income-statement/?selected=total_revenue%2Cgross_profit%2Coper_income%2Cpretax_income%2Ctotal_non_oper_income%2Cinterest_expense_on_debt"
+interest_expense_data_name = "Interest expense on debt"
+
 def get_timestamp_a_week_ago():
     # Calculate the datetime 7 days ago
     seven_days_ago = datetime.now() - timedelta(days=7)
@@ -120,6 +123,7 @@ def text_to_number(txt, suffix_set='billion') -> float:
         return int(num)
     return float(num)
 
+#TODO: Add new function to get single interest expense value from the latest yearly report and send it to http://finefolionet:8080/asset-fundamentals/{exchange}/{ticker}
 
 def get_net_income(exchange:str,tickers:list[str]):
     for ticker in tickers:
@@ -151,7 +155,6 @@ def get_net_income(exchange:str,tickers:list[str]):
         except:
             driver.quit()
             return None
-
 
 def run_update():
     timestamp = get_timestamp_a_week_ago()
