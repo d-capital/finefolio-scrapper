@@ -123,7 +123,44 @@ def text_to_number(txt, suffix_set='billion') -> float:
         return int(num)
     return float(num)
 
-#TODO: Add new function to get single interest expense value from the latest yearly report and send it to http://finefolionet:8080/asset-fundamentals/{exchange}/{ticker}
+def get_interest_expense(exchange:str, tickers:list[str]):
+    for ticker in tickers:
+        options = Options()
+        options.binary_location = "/usr/bin/chromium"
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        service = Service(executable_path="/usr/bin/chromedriver")
+        driver = webdriver.Chrome(service=service, options=options)
+        url = f"https://tradingview.com/symbols/{exchange}-{ticker}/financials-income-statement/?selected=total_revenue%2Cgross_profit%2Coper_income%2Cpretax_income%2Ctotal_non_oper_income%2Cinterest_expense_on_debt"
+        driver.get(url)
+        try:
+            table = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[class*='tableWrap']"))
+            )
+            header_row = table.find_elements(By.CSS_SELECTOR, 'div[class*="stickyContainer"]')[0]
+            year_2025 = header_row.find_elements(By.XPATH, "//span[contains(@class, 'conten') and contains(text(), '2025')]")
+            year_2026 = header_row.find_elements(By.XPATH, "//span[contains(@class, 'conten') and contains(text(), '2026')]")
+            if len(year_2025) > 0 and len(year_2026) <= 0:
+                interest_row = driver.find_elements(By.CSS_SELECTOR, f'[data-name="{interest_expense_data_name}"]')
+                if not interest_row:
+                    interest_row = driver.find_elements(By.CSS_SELECTOR, '[data-name="Interest expense"]')
+                if not interest_row:
+                    driver.quit()
+                    return None
+                values = interest_row[0].find_elements(By.CSS_SELECTOR, "div[class*='container']")
+                if len(values) < 2:
+                    driver.quit()
+                    return None
+                value = text_to_number(clean_text(values[-2].text).split(" ")[0])
+                driver.quit()
+                return value
+            driver.quit()
+            return None
+        except Exception:
+            driver.quit()
+            return None
+
 
 def get_net_income(exchange:str,tickers:list[str]):
     for ticker in tickers:
@@ -174,4 +211,17 @@ def run_update():
                 print(f"Successfully updated net income for {ticker} for 2025")
             else:
                 print(f"Failed to update net income for {ticker} for 2025")
+
+        interest_expense_2025 = get_interest_expense(ticker["exchange"],[ticker["ticker"]])
+        if interest_expense_2025 is not None:
+            interest_expense_payload = {'interestExpense': interest_expense_2025}
+            interest_expense_response = requests.patch(
+                f'http://finefolionet:8080/asset-fundamentals/{ticker["exchange"]}/{ticker["ticker"]}',
+                json=interest_expense_payload,
+                verify=False,
+            )
+            if interest_expense_response.status_code == 200:
+                print(f"Successfully updated interest expense for {ticker} for 2025")
+            else:
+                print(f"Failed to update interest expense for {ticker} for 2025")
     
