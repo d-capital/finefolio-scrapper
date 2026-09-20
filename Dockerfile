@@ -1,4 +1,4 @@
-FROM python:3.9.13
+FROM python:3.9-slim-bookworm
 WORKDIR /app
 
 # 1. Force non-interactive frontend and install Chromium without bloated extras
