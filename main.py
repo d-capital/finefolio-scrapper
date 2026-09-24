@@ -31,7 +31,7 @@ scheduler.add_job(
 scheduler.add_job(
     moex_beta_update.run_update,
     'cron',
-    day_of_week='sun',
+    #day_of_week='sun',
     hour=8,
     minute=00,
     timezone=moscow_tz,
