@@ -25,7 +25,6 @@ def get_index_prices_from_moex(ticker:str, boardid:str, market: str) -> pd.DataF
         return df
 
 def get_beta(ticker: str, index_price) -> float:
-    index_price = 'IMOEX'
     stock_prices = get_prices_from_moex(ticker,'TQBR', 'shares')#TQOB for bonds, TQBR for stocks
     stock_close_prices = stock_prices['CLOSE']
     index_close_price = index_price['CLOSE']
