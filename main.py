@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pytz import timezone
-from jobs import moex_data_update, us_data_update, moex_beta_update
+from jobs import moex_data_update, us_data_update, us_free_cash_flow_update, moex_beta_update
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -28,14 +28,22 @@ scheduler.add_job(
     timezone=moscow_tz,
     id='weekly_6am_moscow_us_net_income')
 
-scheduler.add_job(
-    moex_beta_update.run_update,
-    'cron',
+#scheduler.add_job(
+    #moex_beta_update.run_update,
+    #'cron',
     #day_of_week='sun',
-    hour=12,
-    minute=00,
+    #hour=12,
+    #minute=00,
+    #timezone=moscow_tz,
+    #id='weekly_8am_moscow_moex_beta')
+
+scheduler.add_job(
+    us_free_cash_flow_update.run_update,
+    'cron',
+    hour=14,
+    minute=6,
     timezone=moscow_tz,
-    id='weekly_8am_moscow_moex_beta')
+    id='daily_12pm_moscow_us_free_cash_flow')
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

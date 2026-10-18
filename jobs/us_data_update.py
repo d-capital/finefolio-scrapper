@@ -98,7 +98,7 @@ def text_to_number(txt, suffix_set='billion') -> float:
         return None
 
     num = float(m.group(1))
-    suffix = suffix_set
+    suffix = m.group(2) or suffix_set
 
     # if number had an explicit leading sign we keep it; otherwise apply parentheses-negation
     if not str(m.group(1)).startswith(('+', '-')) and is_parentheses_negative:
