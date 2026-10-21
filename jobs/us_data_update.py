@@ -1,5 +1,7 @@
 import time
+import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import requests
 from selenium import webdriver
@@ -11,6 +13,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import WebElement
 import re
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 interest_expense_url = "https://www.tradingview.com/symbols/NASDAQ-TSLA/financials-income-statement/?selected=total_revenue%2Cgross_profit%2Coper_income%2Cpretax_income%2Ctotal_non_oper_income%2Cinterest_expense_on_debt"
 interest_expense_data_name = "Interest expense on debt"
@@ -193,6 +197,57 @@ def get_net_income(exchange:str,tickers:list[str]):
             driver.quit()
             return None
 
+def get_free_cash_flow_for_year(exchange: str, ticker: str, year: int):
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+
+    chromium_path = Path("/usr/bin/chromium")
+    driver_path = Path("/usr/bin/chromedriver")
+    driver = None
+    try:
+        if chromium_path.is_file() and driver_path.is_file():
+            options.binary_location = str(chromium_path)
+            service = Service(executable_path=str(driver_path))
+            driver = webdriver.Chrome(service=service, options=options)
+        else:
+            driver = webdriver.Chrome(options=options)
+
+        driver.set_page_load_timeout(30)
+        url = f"https://www.tradingview.com/symbols/{exchange}-{ticker}/financials-cash-flow/"
+        driver.get(url)
+        table = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class*="tableWrap"]'))
+        )
+        header_row = table.find_elements(By.CSS_SELECTOR, 'div[class*="stickyContainer"]')[0]
+        annual_years = set()
+        for element in header_row.find_elements(By.CSS_SELECTOR, "span"):
+            year_text = clean_text(element.text)
+            if re.fullmatch(r"\d{4}", year_text):
+                annual_years.add(int(year_text))
+
+        if year not in annual_years:
+            return None
+
+        rows = driver.find_elements(By.CSS_SELECTOR, '[data-name="Free cash flow"]')
+        if not rows:
+            return None
+
+        values = rows[0].find_elements(By.CSS_SELECTOR, 'div[class*="container"]')
+        value_index = len(values) - 2 - (max(annual_years) - year)
+        if value_index < 0 or value_index >= len(values) - 1:
+            return None
+
+        value_text = clean_text(values[value_index].text).split("\n")[0]
+        return text_to_number(value_text)
+    except Exception:
+        logger.exception("Failed to get free cash flow for %s %s in %s", exchange, ticker, year)
+        return None
+    finally:
+        if driver is not None:
+            driver.quit()
+
 def run_update():
     timestamp = get_timestamp_a_week_ago()
     tickers = get_tickers(timestamp=timestamp)
@@ -211,6 +266,24 @@ def run_update():
                 print(f"Successfully updated net income for {ticker} for 2025")
             else:
                 print(f"Failed to update net income for {ticker} for 2025")
+
+        free_cash_flow_2025 = get_free_cash_flow_for_year(
+            ticker["exchange"], ticker["ticker"], 2025
+        )
+        if free_cash_flow_2025 is not None:
+            free_cash_flow_payload = {
+                "year": 2025,
+                "value": free_cash_flow_2025,
+            }
+            free_cash_flow_response = requests.post(
+                f'http://finefolionet:8080/valuation/{ticker["exchange"]}/{ticker["ticker"]}/free-cash-flow',
+                json=free_cash_flow_payload,
+                verify=False,
+            )
+            if free_cash_flow_response.status_code == 200:
+                print(f"Successfully updated free cash flow for {ticker} for 2025")
+            else:
+                print(f"Failed to update free cash flow for {ticker} for 2025")
 
         interest_expense_2025 = get_interest_expense(ticker["exchange"],[ticker["ticker"]])
         if interest_expense_2025 is not None:

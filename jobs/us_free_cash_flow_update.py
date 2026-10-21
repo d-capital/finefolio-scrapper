@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 TICKER_FILE = Path(__file__).resolve().parent.parent / "net_income_nyse_nasdaq.csv"
 TARGET_YEARS = range(2019, 2026)
 FREE_CASH_FLOW_DATA_NAME = "Free cash flow"
-API_BASE_URL = "http://localhost:64663"
+API_BASE_URL = "http://finefolionet:8080"
 
 
 def load_tickers() -> list[tuple[str, str]]:

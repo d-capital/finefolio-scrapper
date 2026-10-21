@@ -97,6 +97,21 @@ def find_last_element(elements: list[WebElement], suffix_set='billion') -> float
             return 0.0
     return 0.0 
 
+def find_latest_annual_fcf(header_cells: list[str], fcf_rows: list[WebElement]):
+    if not fcf_rows:
+        return None
+
+    try:
+        year_index = header_cells.index("2025")
+    except ValueError:
+        return None
+
+    value_cells = fcf_rows[0].find_elements(By.CSS_SELECTOR, "th, td")
+    value_index = year_index + 1
+    if value_index >= len(value_cells):
+        return None
+    return text_to_number(value_cells[value_index].text.strip(), suffix_set='billion')
+
 def find_eps_ttm(elements: list[WebElement], suffix_set='billion') -> float:
     if len(elements)>0:
         el0 = elements[0].find_elements(By.CSS_SELECTOR, "td")[-1].text.strip()
@@ -183,8 +198,25 @@ def get_net_income_for_years(symbol, target_years=("2025")):
         equity_row = table.find_elements(By.CSS_SELECTOR, "tr[field='bank_assets']")
     equity = find_last_element(equity_row,'billion')
     print("Equity: "+str(equity))
+    header_cells = []
+    for row in table.find_elements(By.CSS_SELECTOR, "tr"):
+        cell_texts = [
+            clean_text(cell.text)
+            for cell in row.find_elements(By.CSS_SELECTOR, "th, td")
+        ]
+        year_count = sum(
+            1
+            for text in cell_texts
+            if text in {"2019", "2020", "2021", "2022", "2023", "2024", "2025"}
+        )
+        if year_count > sum(
+            1
+            for text in header_cells
+            if text in {"2019", "2020", "2021", "2022", "2023", "2024", "2025"}
+        ):
+            header_cells = cell_texts
     fcf_row = table.find_elements(By.CSS_SELECTOR, "tr[field='fcf']")
-    fcf = find_last_element(fcf_row, suffix_set='billion')
+    fcf = find_latest_annual_fcf(header_cells, fcf_row)
     print("FCF: "+str(fcf))
     dividends_row = table.find_elements(By.CSS_SELECTOR, "tr[field='div_yield']")
     dividends = find_last_element(dividends_row, suffix_set=None)
@@ -221,6 +253,20 @@ def run_update():
                         print(f"Successfully updated net income for {ticker} for 2025")
                     else:
                         print(f"Failed to update net income for {ticker} for 2025")
+                if financials[4] is not None:
+                    free_cash_flow_payload = {
+                        'year': 2025,
+                        'value': int(financials[4])
+                    }
+                    free_cash_flow_response = requests.post(
+                        f'http://finefolionet:8080/valuation/MOEX/{ticker}/free-cash-flow',
+                        json=free_cash_flow_payload,
+                        verify=False
+                    )
+                    if free_cash_flow_response.status_code == 200:
+                        print(f"Successfully updated free cash flow for {ticker} for 2025")
+                    else:
+                        print(f"Failed to update free cash flow for {ticker} for 2025")
                 payload = {}
                 if financials[1] is not None:
                     eps = int(financials[1])
