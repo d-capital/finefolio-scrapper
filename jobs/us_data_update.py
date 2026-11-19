@@ -14,6 +14,8 @@ from selenium.webdriver.support.select import WebElement
 import re
 import pandas as pd
 
+from jobs.api_client import API_BASE_URL, get_authorization_headers
+
 logger = logging.getLogger(__name__)
 
 interest_expense_url = "https://www.tradingview.com/symbols/NASDAQ-TSLA/financials-income-statement/?selected=total_revenue%2Cgross_profit%2Coper_income%2Cpretax_income%2Ctotal_non_oper_income%2Cinterest_expense_on_debt"
@@ -259,9 +261,12 @@ def run_update():
                                 'year': 2025,
                                 'value': net_income_2025
                             }
-            net_income_response = requests.post(f'http://finefolionet:8080/valuation/{ticker["exchange"]}/{ticker["ticker"]}/net-income', 
-                                                json=net_income_payload,
-                                                verify=False)
+            net_income_response = requests.post(
+                f'{API_BASE_URL}/valuation/{ticker["exchange"]}/{ticker["ticker"]}/net-income',
+                                json=net_income_payload,
+                                verify=False,
+                                headers=get_authorization_headers(),
+                            )
             if net_income_response.status_code == 200:
                 print(f"Successfully updated net income for {ticker} for 2025")
             else:
@@ -276,9 +281,10 @@ def run_update():
                 "value": free_cash_flow_2025,
             }
             free_cash_flow_response = requests.post(
-                f'http://finefolionet:8080/valuation/{ticker["exchange"]}/{ticker["ticker"]}/free-cash-flow',
+                f'{API_BASE_URL}/valuation/{ticker["exchange"]}/{ticker["ticker"]}/free-cash-flow',
                 json=free_cash_flow_payload,
                 verify=False,
+                headers=get_authorization_headers(),
             )
             if free_cash_flow_response.status_code == 200:
                 print(f"Successfully updated free cash flow for {ticker} for 2025")
@@ -289,9 +295,10 @@ def run_update():
         if interest_expense_2025 is not None:
             interest_expense_payload = {'interestExpense': interest_expense_2025}
             interest_expense_response = requests.patch(
-                f'http://finefolionet:8080/asset-fundamentals/{ticker["exchange"]}/{ticker["ticker"]}',
+                f'{API_BASE_URL}/asset-fundamentals/{ticker["exchange"]}/{ticker["ticker"]}',
                 json=interest_expense_payload,
                 verify=False,
+                headers=get_authorization_headers(),
             )
             if interest_expense_response.status_code == 200:
                 print(f"Successfully updated interest expense for {ticker} for 2025")

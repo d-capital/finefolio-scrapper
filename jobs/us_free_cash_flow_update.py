@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from jobs.api_client import API_BASE_URL, get_authorization_headers
 from jobs.us_data_update import clean_text, text_to_number
 
 logger = logging.getLogger(__name__)
@@ -18,8 +19,6 @@ logger = logging.getLogger(__name__)
 TICKER_FILE = Path(__file__).resolve().parent.parent / "net_income_nyse_nasdaq.csv"
 TARGET_YEARS = range(2019, 2026)
 FREE_CASH_FLOW_DATA_NAME = "Free cash flow"
-API_BASE_URL = "http://finefolionet:8080"
-
 
 def load_tickers() -> list[tuple[str, str]]:
     tickers = []
@@ -111,7 +110,12 @@ def run_update():
             payload = {"year": year, "value": value}
             url = f"{API_BASE_URL}/valuation/{exchange}/{ticker}/free-cash-flow"
             try:
-                response = requests.post(url, json=payload, timeout=20)
+                response = requests.post(
+                    url,
+                    json=payload,
+                    timeout=20,
+                    headers=get_authorization_headers(),
+                )
             except requests.RequestException:
                 logger.exception("Failed to submit free cash flow for %s %s in %s", exchange, ticker, year)
                 continue

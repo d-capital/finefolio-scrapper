@@ -6,6 +6,8 @@ import statsmodels.api as sm
 import apimoex
 import time
 
+from jobs.api_client import API_BASE_URL, get_authorization_headers
+
 def get_prices_from_moex(ticker:str, boardid:str, market: str) -> pd.DataFrame:
     end_date = datetime.now().strftime('%Y-%m-%d')
     start_date = (datetime.now() - timedelta(days=3*365)).strftime('%Y-%m-%d')
@@ -49,7 +51,11 @@ def run_update():
         payload['beta'] = beta
         print(f"Updating beta for {ticker} with payload: {payload}")
         print(f"Beta: {beta}")
-        response = requests.patch(f'http://finefolionet:8080/asset-fundamentals/MOEX/{ticker}', json=payload)
+        response = requests.patch(
+            f'{API_BASE_URL}/asset-fundamentals/MOEX/{ticker}',
+            json=payload,
+            headers=get_authorization_headers(),
+        )
         if response.status_code == 200:
             print(f"Successfully updated beta for {ticker}")
         else:

@@ -11,14 +11,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from jobs.api_client import API_BASE_URL, get_authorization_headers
 from jobs.moex_data_update import clean_text, text_to_number
 
 logger = logging.getLogger(__name__)
 
 TICKER_FILE = Path(__file__).resolve().parent.parent / "moex_data.csv"
 TARGET_YEARS = range(2019, 2026)
-API_BASE_URL = "http://finefolionet:8080"
-
 
 def load_tickers() -> list[str]:
     tickers = []
@@ -123,7 +122,12 @@ def run_update():
         for year, value in values_by_year.items():
             url = f"{API_BASE_URL}/valuation/MOEX/{ticker}/free-cash-flow"
             try:
-                response = requests.post(url, json={"year": year, "value": value}, timeout=20)
+                response = requests.post(
+                    url,
+                    json={"year": year, "value": value},
+                    timeout=20,
+                    headers=get_authorization_headers(),
+                )
             except requests.RequestException:
                 logger.exception("Failed to submit free cash flow for MOEX %s in %s", ticker, year)
                 continue
