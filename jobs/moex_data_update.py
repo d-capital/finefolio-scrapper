@@ -14,6 +14,8 @@ import re
 from datetime import datetime, timedelta
 
 import re
+from jobs.api_client import API_BASE_URL, get_authorization_headers
+
 def clean_text(txt: str) -> str:
     """Remove invisible Unicode formatting chars and normalize minus/dashes."""
     if txt is None:
@@ -248,7 +250,12 @@ def run_update():
                         'year': 2025,
                         'value': net_income_2025
                     }
-                    net_income_response = requests.post(f'http://finefolionet:8080/valuation/MOEX/{ticker}/net-income', json=net_income_payload,verify=False)
+                    net_income_response = requests.post(
+                        f'{API_BASE_URL}/valuation/MOEX/{ticker}/net-income',
+                        json=net_income_payload,
+                        verify=False,
+                        headers=get_authorization_headers(),
+                    )
                     if net_income_response.status_code == 200:
                         print(f"Successfully updated net income for {ticker} for 2025")
                     else:
@@ -259,9 +266,10 @@ def run_update():
                         'value': int(financials[4])
                     }
                     free_cash_flow_response = requests.post(
-                        f'http://finefolionet:8080/valuation/MOEX/{ticker}/free-cash-flow',
+                        f'{API_BASE_URL}/valuation/MOEX/{ticker}/free-cash-flow',
                         json=free_cash_flow_payload,
-                        verify=False
+                        verify=False,
+                        headers=get_authorization_headers(),
                     )
                     if free_cash_flow_response.status_code == 200:
                         print(f"Successfully updated free cash flow for {ticker} for 2025")
@@ -293,7 +301,11 @@ def run_update():
                     print(f"No financial data found for {ticker}. Skipping update.")
                 else:
                     print(f"Updating financial data for {ticker} with payload: {payload}")
-                    response = requests.patch(f'http://finefolionet:8080/asset-fundamentals/MOEX/{ticker}', json=payload)
+                    response = requests.patch(
+                        f'{API_BASE_URL}/asset-fundamentals/MOEX/{ticker}',
+                        json=payload,
+                        headers=get_authorization_headers(),
+                    )
                     if response.status_code == 200:
                         print(f"Successfully updated {ticker}")
                     else:
