@@ -3,6 +3,7 @@ WORKDIR /app
 
 # 1. Force non-interactive frontend and install Chromium without bloated extras
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     chromium-driver \
